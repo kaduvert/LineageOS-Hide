@@ -1,0 +1,29 @@
+#!/sbin/sh
+# LineageHide installer
+
+SKIPUNZIP=1
+
+# Extract module files
+unzip -o "$ZIPFILE" 'module.prop'       -d "$MODPATH" >&2
+unzip -o "$ZIPFILE" 'zygisk/*'          -d "$MODPATH" >&2
+unzip -o "$ZIPFILE" 'assets/hooks.dex'  -d "$MODPATH" >&2
+
+# Create config directory and default allowlist
+mkdir -p "$MODPATH"
+[ ! -f "$MODPATH/allowlist.conf" ] && cat > "$MODPATH/allowlist.conf" << 'EOF'
+# LineageHide allowlist
+# One package name per line.
+# Apps listed here can see all LineageOS signatures normally.
+# Lines starting with # are comments.
+#
+# Example:
+# com.example.myapp
+EOF
+
+# Set permissions
+set_perm_recursive "$MODPATH" root root 0755 0644
+set_perm "$MODPATH/allowlist.conf" root root 0600
+
+ui_print "- LineageHide installed"
+ui_print "- Edit $MODPATH/allowlist.conf to whitelist apps"
+ui_print "- No system files were modified"

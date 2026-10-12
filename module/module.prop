@@ -1,0 +1,6 @@
+id=lineagehide
+name=LineageHide
+version=v1.0
+versionCode=1
+author=LineageHide
+description=Hides LineageOS runtime signatures (services, files, packages, SELinux) from non-system apps. Edit /data/adb/modules/lineagehide/allowlist.conf to exempt apps.
