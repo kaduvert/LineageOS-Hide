@@ -1,0 +1,17 @@
+[submodule "native/libs/dobby"]
+    path = native/libs/dobby
+    url = https://github.com/jmpews/Dobby
+    branch = master
+
+[submodule "native/libs/lsplant"]
+    path = native/libs/lsplant
+    url = https://github.com/LSPosed/LSPlant
+    branch = master
+
+[submodule "native/libs/zygisk"]
+    path = native/libs/zygisk
+    url = https://github.com/topjohnwu/zygisk-module-sample
+    branch = master
+    # Only zygisk.hpp is used from this repo.
+    # After `git submodule update --init`, copy native/libs/zygisk/module/jni/zygisk.hpp
+    # to native/libs/zygisk/zygisk.hpp  (the CMakeLists looks for it there).
