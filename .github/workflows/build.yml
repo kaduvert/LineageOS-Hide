@@ -1,0 +1,96 @@
+name: Build LineageOS-Hide
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Module
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Disable automatic recursive checkout to avoid broken private test submodules in lsplant
+          submodules: false
+
+      - name: Checkout required submodules
+        run: |
+          echo "Checking out dobby..."
+          git submodule update --init native/libs/dobby
+          
+          echo "Checking out zygisk..."
+          git submodule update --init native/libs/zygisk
+          # zygisk sample requires libcxx nested submodule
+          git submodule update --init native/libs/zygisk/module/jni/libcxx || true
+          
+          echo "Checking out lsplant (non-recursive to skip private test submodules)..."
+          git submodule update --init native/libs/lsplant
+          
+          echo "Checking out lsplant nested build dependencies..."
+          cd native/libs/lsplant
+          # We only need dex_builder for the actual build, NOT the test/ directory
+          git submodule update --init lsplant/src/main/jni/external/dex_builder
+          git submodule update --init docs/doxygen-awesome-css || true
+          cd ../..
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          # r26b satisfies the r25c+ requirement and is highly stable
+          ndk-version: r26b
+          add-to-path: true
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build python3 zip
+
+      - name: Prepare zygisk.hpp
+        run: |
+          sed -i 's/lsplant\.cpp/lsplant.cc/g' native/CMakeLists.txt
+          # As explicitly noted in TECHNICAL_README.md, this file must be copied into place 
+          # after submodules are initialized, but before the build script runs.
+          TARGET_DIR="native/libs/zygisk"
+          SOURCE_FILE="$TARGET_DIR/module/jni/zygisk.hpp"
+          TARGET_FILE="$TARGET_DIR/zygisk.hpp"
+          
+          if [ -f "$SOURCE_FILE" ] && [ ! -f "$TARGET_FILE" ]; then
+            cp "$SOURCE_FILE" "$TARGET_FILE"
+            echo "✅ Copied zygisk.hpp to $TARGET_DIR/"
+          elif [ -f "$TARGET_FILE" ]; then
+            echo "✅ zygisk.hpp already exists in $TARGET_DIR/"
+          else
+            echo "⚠️ Warning: Could not find zygisk.hpp at $SOURCE_FILE"
+            ls -la "$TARGET_DIR" || true
+          fi
+
+          touch native/libs/lsplant/CMakeLists.txt
+
+      - name: Build LineageOS-Hide
+        env:
+          # Explicitly pass the NDK path to satisfy build.sh requirements
+          NDK: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          chmod +x build.sh
+          ./build.sh Release
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineagehide-${{ github.run_id }}
+          path: lineagehide.zip
