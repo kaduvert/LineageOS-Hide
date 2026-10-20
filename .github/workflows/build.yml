@@ -1,0 +1,78 @@
+name: Build LineageOS-Hide
+
+on:
+  push:
+    branches: [main, master]
+    tags:     ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Module
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false   # manual below — avoids LSPlant's private test submodules
+
+      - name: Checkout submodules
+        run: |
+          echo "Checking out dobby..."
+          git submodule update --init native/libs/dobby
+
+          echo "Checking out zygisk..."
+          git submodule update --init native/libs/zygisk
+          git submodule update --init native/libs/zygisk/module/jni/libcxx || true
+
+          echo "Checking out lsplant (non-recursive, skip private test submodules)..."
+          git submodule update --init native/libs/lsplant
+          cd native/libs/lsplant
+          # Only the dex_builder dependency is needed; skip lsplant's own test deps
+          git submodule update --init lsplant/src/main/jni/external/dex_builder
+          git submodule update --init docs/doxygen-awesome-css || true
+          cd ../../..
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+          add-to-path: true
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y cmake ninja-build python3 zip
+
+      - name: Prepare zygisk.hpp
+        run: |
+          TARGET="native/libs/zygisk/zygisk.hpp"
+          SOURCE="native/libs/zygisk/module/jni/zygisk.hpp"
+          if [ -f "$SOURCE" ] && [ ! -f "$TARGET" ]; then
+            cp "$SOURCE" "$TARGET"
+            echo "Copied zygisk.hpp"
+          elif [ -f "$TARGET" ]; then
+            echo "zygisk.hpp already in place"
+          else
+            echo "WARNING: zygisk.hpp not found at $SOURCE"
+            ls -la native/libs/zygisk/ || true
+          fi
+
+          touch native/libs/lsplant/CMakeLists.txt
+
+      - name: Build LineageOS-Hide
+        env:
+          NDK: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          chmod +x build.sh
+          ./build.sh Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineagehide-${{ github.run_id }}
+          path: lineagehide.zip
