@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <string>
 #include <sys/syscall.h>
-#include <linux/dirent.h>
+#include <unistd.h>
 
 // Dobby public API
 #include "dobby.h"

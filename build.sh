@@ -44,9 +44,16 @@ fi
 echo "Using NDK: $NDK"
 
 # ── Check submodules ──────────────────────────────────────────────────────────
-for sub in "native/libs/dobby" "native/libs/lsplant" "native/libs/zygisk"; do
-    if [ ! -f "$SCRIPT_DIR/$sub/CMakeLists.txt" ] && [ ! -f "$SCRIPT_DIR/$sub/zygisk.hpp" ]; then
-        echo "ERROR: submodule $sub not initialised."
+# Each entry: <path that must exist once the submodule is initialised>
+SUBMODULE_CHECKS=(
+    "native/libs/dobby/CMakeLists.txt"
+    "native/libs/lsplant/lsplant/src/main/jni/lsplant.cc"
+    "native/libs/lsplant/lsplant/src/main/jni/external/dex_builder/CMakeLists.txt"
+    "native/libs/zygisk/module/jni/zygisk.hpp"
+)
+for check in "${SUBMODULE_CHECKS[@]}"; do
+    if [ ! -f "$SCRIPT_DIR/$check" ]; then
+        echo "ERROR: submodule not initialised (missing: $check)."
         echo "Run: git submodule update --init --recursive"
         exit 1
     fi

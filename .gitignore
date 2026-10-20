@@ -1,0 +1,8 @@
+# Build outputs
+/out/
+/_staging/
+lineagehide.zip
+
+# Editor / OS junk
+.DS_Store
+__MACOSX/

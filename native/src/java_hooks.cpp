@@ -394,14 +394,19 @@ void java_hooks::install(JNIEnv* env, const char* dex_path) {
 
     // Init LSPlant using Dobby as the inline-hook backend
     lsplant::InitInfo info{
-        .inline_hook = [](void* t, void* r, void** b) {
-            return DobbyHook(t, r, b) == 0;
+        .inline_hooker = [](void* target, void* hooker) -> void* {
+            void* backup = nullptr;
+            if (DobbyHook(target, hooker, &backup) != 0) return nullptr;
+            return backup;
         },
-        .art_symbol_resolver = [](const char* sym) -> void* {
+        .inline_unhooker = [](void* func) -> bool {
+            return DobbyDestroy(func) == 0;
+        },
+        .art_symbol_resolver = [](std::string_view sym) -> void* {
             static void* la = dlopen("libart.so", RTLD_NOW|RTLD_NOLOAD);
-            return la ? dlsym(la, sym) : nullptr;
+            return la ? dlsym(la, std::string(sym).c_str()) : nullptr;
         },
-        .art_symbol_prefix_resolver = [](const char*) -> void* { return nullptr; },
+        .art_symbol_prefix_resolver = [](std::string_view) -> void* { return nullptr; },
     };
     if (!lsplant::Init(env, info)) {
         LOGE("LSPlant init failed — service/package hooks skipped");

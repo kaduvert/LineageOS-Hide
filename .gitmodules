@@ -1,17 +1,25 @@
+# Submodules are pinned by commit (gitlink), not tracked by branch.
+#
+#   dobby   — pinned pre-refactor (0932d69). Current master's arm64 closure
+#             bridge uses Mach-O-only @PAGE/@PAGEOFF relocations that the
+#             clang in NDK r26+ rejects on ELF, and its logging header has an
+#             ODR bug (non-inline Logger::Shared() defined in the header)
+#             that produces duplicate symbols when statically linked.
+#   lsplant — pinned to tag v6.4 (7217ac6). Master has migrated to C++23
+#             modules (import std; import :common; …) and can no longer be
+#             compiled as a plain translation unit. v6.4 also needs its
+#             dex_builder submodule (initialised recursively in CI).
+#   zygisk  — only zygisk.hpp is used; CMake includes module/jni directly,
+#             no copying required.
+
 [submodule "native/libs/dobby"]
 	path = native/libs/dobby
 	url = https://github.com/jmpews/Dobby
-    branch = master
 
 [submodule "native/libs/lsplant"]
 	path = native/libs/lsplant
 	url = https://github.com/LSPosed/LSPlant
-    branch = master
 
 [submodule "native/libs/zygisk"]
 	path = native/libs/zygisk
 	url = https://github.com/topjohnwu/zygisk-module-sample
-    branch = master
-    # Only zygisk.hpp is used from this repo.
-    # After `git submodule update --init`, copy native/libs/zygisk/module/jni/zygisk.hpp
-    # to native/libs/zygisk/zygisk.hpp  (the CMakeLists looks for it there).

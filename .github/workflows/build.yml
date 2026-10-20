@@ -19,24 +19,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: false   # manual below — avoids LSPlant's private test submodules
+          submodules: false   # manual below — only init what the build needs
 
       - name: Checkout submodules
         run: |
-          echo "Checking out dobby..."
+          # Pins matter: dobby is pinned pre-refactor (master's arm64 asm uses
+          # Mach-O-only @PAGE relocations that NDK r26's clang rejects), and
+          # lsplant is pinned to v6.4 (master now requires C++23 modules).
           git submodule update --init native/libs/dobby
-
-          echo "Checking out zygisk..."
           git submodule update --init native/libs/zygisk
-          git submodule update --init native/libs/zygisk/module/jni/libcxx || true
-
-          echo "Checking out lsplant (non-recursive, skip private test submodules)..."
           git submodule update --init native/libs/lsplant
+
+          # LSPlant v6.4 needs its dex_builder companion (slicer + parallel-hashmap)
           cd native/libs/lsplant
-          # Only the dex_builder dependency is needed; skip lsplant's own test deps
-          git submodule update --init lsplant/src/main/jni/external/dex_builder
-          git submodule update --init docs/doxygen-awesome-css || true
-          cd ../../..
+          git submodule update --init --recursive lsplant/src/main/jni/external/dex_builder
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
@@ -46,23 +42,9 @@ jobs:
           add-to-path: true
 
       - name: Install build dependencies
-        run: sudo apt-get install -y cmake ninja-build python3 zip
-
-      - name: Prepare zygisk.hpp
         run: |
-          TARGET="native/libs/zygisk/zygisk.hpp"
-          SOURCE="native/libs/zygisk/module/jni/zygisk.hpp"
-          if [ -f "$SOURCE" ] && [ ! -f "$TARGET" ]; then
-            cp "$SOURCE" "$TARGET"
-            echo "Copied zygisk.hpp"
-          elif [ -f "$TARGET" ]; then
-            echo "zygisk.hpp already in place"
-          else
-            echo "WARNING: zygisk.hpp not found at $SOURCE"
-            ls -la native/libs/zygisk/ || true
-          fi
-
-          touch native/libs/lsplant/CMakeLists.txt
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build python3 zip
 
       - name: Build LineageOS-Hide
         env:
@@ -70,6 +52,16 @@ jobs:
         run: |
           chmod +x build.sh
           ./build.sh Release
+
+      - name: Verify module contents
+        run: |
+          unzip -l lineagehide.zip
+          for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+            unzip -l lineagehide.zip | grep -q "zygisk/${abi}.so" \
+              || { echo "ERROR: zygisk/${abi}.so missing from module zip"; exit 1; }
+          done
+          unzip -l lineagehide.zip | grep -q "assets/hooks.dex" \
+            || { echo "ERROR: assets/hooks.dex missing from module zip"; exit 1; }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

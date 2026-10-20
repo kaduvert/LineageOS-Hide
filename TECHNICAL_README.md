@@ -46,18 +46,26 @@ git clone --recurse-submodules https://github.com/you/LineageHide
 
 Or after a plain clone:
 ```
-git submodule update --init --recursive
+git submodule update --init native/libs/dobby native/libs/zygisk native/libs/lsplant
+cd native/libs/lsplant
+git submodule update --init --recursive lsplant/src/main/jni/external/dex_builder
+cd -
 ```
 
+> **Submodule pins matter.** `dobby` is pinned pre-refactor (current master's
+> arm64 assembly uses Apple-only `@PAGE` relocations that NDK r26+ clang
+> rejects on ELF, and its logging header has an ODR bug that produces
+> duplicate symbols) and `lsplant` is pinned to **v6.4** (master has migrated
+> to C++23 modules and cannot be compiled as a plain translation unit
+> anymore). Don't run `git submodule update --remote`.
+
 Required tools:
-- Android NDK r25c+ (`ANDROID_NDK_HOME` or `NDK` env var)
+- Android NDK r26+ (`ANDROID_NDK_HOME` or `NDK` env var)
 - CMake 3.22+, Ninja
 - Python 3.6+ (for `tools/gen_dex.py`)
 
-After submodules are initialised, copy `zygisk.hpp` into place:
-```bash
-cp native/libs/zygisk/module/jni/zygisk.hpp native/libs/zygisk/zygisk.hpp
-```
+No extra steps are needed for `zygisk.hpp` — the CMake build picks it up
+straight from `native/libs/zygisk/module/jni/`.
 
 ### One command
 

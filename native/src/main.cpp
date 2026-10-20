@@ -6,6 +6,7 @@
  * apps.  System apps (uid < 10000) are never affected.
  */
 
+#include <sys/types.h>   // dev_t/ino_t used by zygisk.hpp (must come first)
 #include "zygisk.hpp"
 #include "hook_manager.h"
 #include "config.h"
