@@ -22,11 +22,10 @@ jobs:
       - name: Fetch dependencies
         run: |
           # ── Dobby ─────────────────────────────────────────────────────────
-          # Using chiteroman/Dobby: fixes the arm64 ADRP @PAGE/@PAGEOFF
-          # relocation error ("error: invalid symbol kind for ADRP relocation")
-          # that NDK r26's clang produces with jmpews/Dobby master's
-          # ClosureTrampolineBridge/arm64 asm. This is the community-accepted
-          # working fork for Android builds.
+          # Using JingMatrix/Dobby: the community-maintained fork used by
+          # PlayIntegrityFork & JingMatrix/Vector. Fixes the arm64 ADRP
+          # @PAGE/@PAGEOFF relocation error that jmpews/Dobby master produces
+          # with NDK r26+.
           git clone --depth=1 https://github.com/JingMatrix/Dobby native/libs/dobby
 
           # ── zygisk-module-sample ──────────────────────────────────────────
@@ -62,6 +61,10 @@ jobs:
           NDK: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           chmod +x build.sh
+          # -j1 keeps output sequential so compiler errors appear right
+          # after the file that caused them, not buried in parallel output.
+          # Remove -j1 (or replace with --parallel) once the build is green.
+          sed -i 's/cmake --build "\$BUILD_DIR" --parallel/cmake --build "$BUILD_DIR" --verbose -- -j1/' build.sh
           ./build.sh Release
 
       - name: Verify module contents
