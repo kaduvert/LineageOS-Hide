@@ -27,7 +27,7 @@ jobs:
           # that NDK r26's clang produces with jmpews/Dobby master's
           # ClosureTrampolineBridge/arm64 asm. This is the community-accepted
           # working fork for Android builds.
-          git clone --depth=1 https://github.com/chiteroman/Dobby native/libs/dobby
+          git clone --depth=1 https://github.com/JingMatrix/Dobby native/libs/dobby
 
           # ── zygisk-module-sample ──────────────────────────────────────────
           # Header-only (zygisk.hpp). Latest HEAD is fine.
