@@ -18,21 +18,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: false   # manual below — only init what the build needs
 
-      - name: Checkout submodules
+      - name: Fetch dependencies
         run: |
-          # Pins matter: dobby is pinned pre-refactor (master's arm64 asm uses
-          # Mach-O-only @PAGE relocations that NDK r26's clang rejects), and
-          # lsplant is pinned to v6.4 (master now requires C++23 modules).
-          git submodule update --init native/libs/dobby
-          git submodule update --init native/libs/zygisk
-          git submodule update --init native/libs/lsplant
+          # ── Dobby ─────────────────────────────────────────────────────────
+          # Using chiteroman/Dobby: fixes the arm64 ADRP @PAGE/@PAGEOFF
+          # relocation error ("error: invalid symbol kind for ADRP relocation")
+          # that NDK r26's clang produces with jmpews/Dobby master's
+          # ClosureTrampolineBridge/arm64 asm. This is the community-accepted
+          # working fork for Android builds.
+          git clone --depth=1 https://github.com/chiteroman/Dobby native/libs/dobby
 
-          # LSPlant v6.4 needs its dex_builder companion (slicer + parallel-hashmap)
-          cd native/libs/lsplant
-          git submodule update --init --recursive lsplant/src/main/jni/external/dex_builder
+          # ── zygisk-module-sample ──────────────────────────────────────────
+          # Header-only (zygisk.hpp). Latest HEAD is fine.
+          git clone --depth=1 \
+            https://github.com/topjohnwu/zygisk-module-sample native/libs/zygisk
+
+          # ── LSPlant ───────────────────────────────────────────────────────
+          # Pinned to tag v6.4. Master has migrated to C++23 modules
+          # (import std;) and can no longer be compiled as a plain TU.
+          git clone --depth=1 --branch v6.4 \
+            https://github.com/LSPosed/LSPlant native/libs/lsplant
+
+          # LSPlant v6.4 needs its dex_builder companion (slicer + parallel-hashmap).
+          # This is a submodule of LSPlant's own repo so the gitlinks are there.
+          git -C native/libs/lsplant submodule update --init --recursive \
+            lsplant/src/main/jni/external/dex_builder
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
